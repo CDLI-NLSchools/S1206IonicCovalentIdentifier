@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Science 1206: Ionic vs. Covalent Classification</title>
+  <style>
+    :root {
+      --solid-bg: #ffffff;
+      --solid-color: #000000;
+      --gas-bg: #d0d0d0;
+      --gas-color: #000000;
+      --liquid-bg: #111111;
+      --liquid-color: #ffffff;
+      --grid-border: #000000;
+      --staircase-color: #000000;
+      --highlight-color: #0066cc;
+      --selected-blue: #005691;
+      --success-green: #2e7d32;
+      --error-red: #c62828;
+    }
+
+    * { box-sizing: border-box; user-select: none; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #eef2f5;
+      margin: 0;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Top HUD / Challenge Dashboard */
+    .hud-container {
+      width: 820px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 12px 18px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 6px;
+    }
+
+    .compound-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #111;
+    }
+
+    .compound-title span.subname {
+      font-size: 0.95rem;
+      font-weight: normal;
+      color: #666;
+      margin-left: 8px;
+      font-style: italic;
+    }
+
+    .score-badge {
+      font-weight: bold;
+      background: #e3f2fd;
+      color: #0d47a1;
+      padding: 5px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+    }
+
+    .interaction-row {
+      display: grid;
+      grid-template-columns: 220px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 44px;
+    }
+
+    /* Element Checklist Pills */
+    .element-checklist {
+      display: flex;
+      gap: 8px;
+    }
+
+    .check-pill {
+      flex: 1;
+      padding: 5px 8px;
+      border: 1.5px dashed #888;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      text-align: center;
+      background: #fafafa;
+      color: #555;
+    }
+
+    .check-pill.found {
+      border: 1.5px solid var(--success-green);
+      background: #e8f5e9;
+      color: var(--success-green);
+      font-weight: bold;
+    }
+
+    /* Question & Button Controls */
+    .controls-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    button.btn {
+      padding: 7px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: 1.5px solid #0066cc;
+      background: white;
+      color: #0066cc;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    button.btn:hover:not(:disabled) {
+      background: #0066cc;
+      color: white;
+    }
+
+    button.btn.selected {
+      background: var(--selected-blue) !important;
+      color: white !important;
+      border-color: var(--selected-blue) !important;
+      opacity: 1 !important;
+    }
+
+    button.btn:disabled:not(.selected) {
+      opacity: 0.45;
+      cursor: not-allowed;
+      border-color: #cbd5e0;
+      color: #718096;
+    }
+
+    .btn-next-action {
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      background: var(--success-green);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(46,125,50,0.3);
+      transition: background 0.15s ease;
+    }
+
+    .btn-next-action:hover {
+      background: #1b5e20;
+    }
+
+    .feedback-text {
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-left: 6px;
+    }
+    .feedback-text.good { color: var(--success-green); }
+    .feedback-text.bad { color: var(--error-red); }
+
+    /* Compact Periodic Table Viewport (40px Buffer) */
+    .table-viewport {
+      position: relative;
+      width: 820px;
+      height: 400px;
+      padding: 45px 50px;
+      border: 1px solid #cbd5e0;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+      cursor: crosshair;
+      overflow: visible;
+      background: #ffffff;
+    }
+
+    .ptable-grid {
+      display: grid;
+      grid-template-columns: repeat(18, 40px);
+      grid-template-rows: repeat(7, 44px);
+      gap: 0;
+      width: 720px;
+      height: 308px;
+    }
+
+    .cell {
+      position: relative;
+      border: 0.5px solid var(--grid-border);
+      padding: 1px 2px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background-color: var(--solid-bg);
+      color: var(--solid-color);
+      transition: box-shadow 0.05s ease;
+    }
+
+    .cell.gas { background-color: var(--gas-bg); color: var(--gas-color); }
+    .cell.liquid { background-color: var(--liquid-bg); color: var(--liquid-color); }
+
+    .cell.hovered {
+      box-shadow: inset 0 0 0 2px var(--highlight-color) !important;
+      z-index: 5;
+    }
+
+    .cell.pinned {
+      box-shadow: inset 0 0 0 2.5px var(--success-green) !important;
+      z-index: 6;
+    }
+
+    .cell-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      font-size: 6.5px;
+      line-height: 1;
+      font-weight: 600;
+    }
+
+    .cell-charges {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      font-size: 6px;
+      line-height: 1;
+      font-weight: bold;
+    }
+
+    .cell-symbol {
+      text-align: center;
+      font-size: 11.5px;
+      font-weight: 700;
+      line-height: 1;
+      margin-top: 1px;
+    }
+
+    .cell-name {
+      text-align: center;
+      font-size: 5px;
+      text-transform: lowercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 1px;
+    }
+
+    .stair-b { border-bottom: 2.5px solid var(--staircase-color) !important; }
+    .stair-r { border-right: 2.5px solid var(--staircase-color) !important; }
+
+    /* Optical Loupe Lens */
+    #loupe {
+      position: absolute;
+      width: 210px;
+      height: 210px;
+      border-radius: 50%;
+      border: 4px solid #1a202c;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 0 12px rgba(0,0,0,0.2);
+      pointer-events: none;
+      display: none;
+      transform: translate(-50%, -50%);
+      overflow: hidden;
+      z-index: 100;
+      background: #ffffff;
+    }
+
+    #grid-clone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      pointer-events: none;
+    }
+
+    #loupe::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.06) 100%);
+      pointer-events: none;
+    }
+
+    #final-screen {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Challenge Dashboard HUD -->
+  <div class="hud-container" id="hud">
+    <div class="hud-header">
+      <div class="compound-title">
+        <span id="display-formula">NaCl</span>
+        <span class="subname" id="display-name">sodium chloride</span>
+      </div>
+      <div class="score-badge" id="hud-progress">Compound 1 of 5 | Credit: 0%</div>
+    </div>
+
+    <!-- Step 1: Find Elements -->
+    <div class="interaction-row" id="row-find">
+      <div class="element-checklist">
+        <div class="check-pill" id="pill-e1">Find: Na</div>
+        <div class="check-pill" id="pill-e2">Find: Cl</div>
+      </div>
+      <div style="font-size:0.85rem; color:#444;">
+        Scan with your loupe. Look at each element's <strong>ion charge</strong> and click it.
+      </div>
+    </div>
+
+    <!-- Step 2: Classify Compound Type -->
+    <div class="interaction-row" id="row-classify" style="display:none;">
+      <div style="font-weight:bold; font-size:0.9rem;">Compound Type:</div>
+      <div class="controls-area">
+        <button class="btn" id="btn-ionic" onclick="handleClassify('Ionic')">Ionic Compound</button>
+        <button class="btn" id="btn-covalent" onclick="handleClassify('Covalent')">Covalent / Molecular</button>
+        <span class="feedback-text" id="fb-classify"></span>
+      </div>
+    </div>
+
+    <!-- Step 3: Connect Characteristic Property -->
+    <div class="interaction-row" id="row-property" style="display:none;">
+      <div style="font-weight:bold; font-size:0.9rem;">Physical Property:</div>
+      <div class="controls-area">
+        <button class="btn" id="prop-opt-a" onclick="handleProperty(0)"></button>
+        <button class="btn" id="prop-opt-b" onclick="handleProperty(1)"></button>
+        <span class="feedback-text" id="fb-prop"></span>
+      </div>
+      <div>
+        <button class="btn-next-action" id="btn-next" style="display:none;" onclick="nextCompound()">Next Compound →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- End of Set Screen -->
+  <div class="hud-container" id="final-screen">
+    <h2 style="margin:4px 0; color:var(--success-green);">Round Complete!</h2>
+    <p id="final-score-text" style="font-size:1.15rem; margin:10px 0;"></p>
+    <p style="color:#555; font-size:0.9rem;">Your score has been updated in Brightspace. You can practice another set anytime.</p>
+    <div style="margin-top:10px;">
+      <button class="btn-next-action" onclick="startFreshSet()" style="padding:10px 20px; font-size:0.95rem;">Practice Another 5 Compounds ↻</button>
+    </div>
+  </div>
+
+  <!-- Periodic Table Viewport -->
+  <div class="table-viewport" id="viewport">
+    <div class="ptable-grid" id="grid"></div>
+    <div id="loupe">
+      <div id="grid-clone" class="ptable-grid"></div>
+    </div>
+  </div>
+
+<script>
+  /* --- SCORM 1.2 WRAPPER --- */
+  let scormAPI = null;
+  function findAPI(win) {
+    let attempts = 0;
+    while (win.API == null && win.parent != null && win.parent != win) {
+      if (++attempts > 7) return null;
+      win = win.parent;
+    }
+    return win.API;
+  }
+  function initSCORM() {
+    scormAPI = findAPI(window) || (window.opener ? findAPI(window.opener) : null);
+    if (scormAPI) {
+      scormAPI.LMSInitialize("");
+      scormAPI.LMSSetValue("cmi.core.lesson_status", "incomplete");
+      scormAPI.LMSCommit("");
+    }
+  }
+  function sendScoreSCORM(scorePct) {
+    if (scormAPI) {
+      scormAPI.LMSSetValue("cmi.core.score.raw", scorePct.toString());
+      scormAPI.LMSSetValue("cmi.core.score.min", "0");
+      scormAPI.LMSSetValue("cmi.core.score.max", "100");
+      const status = scorePct >= 70 ? "passed" : "completed";
+      scormAPI.LMSSetValue("cmi.core.lesson_status", status);
+      scormAPI.LMSCommit("");
+    }
+  }
+
+  /* --- 24-COMPOUND BANK (Water replaced with CCl4) --- */
+  const compoundBank = [
+    { f: "NaCl", name: "sodium chloride", e1: "Na", e2: "Cl", type: "Ionic",
+      propQ: ["High melting point (crystalline solid)", "Low boiling point (gas at room temp)"], corrProp: 0 },
+    { f: "MgO", name: "magnesium oxide", e1: "Mg", e2: "O", type: "Ionic",
+      propQ: ["Conducts electricity when dissolved in water", "Does not conduct electricity in solution"], corrProp: 0 },
+    { f: "CaCl₂", name: "calcium chloride", e1: "Ca", e2: "Cl", type: "Ionic",
+      propQ: ["Forms hard, brittle crystal lattice", "Soft and flexible at room temp"], corrProp: 0 },
+    { f: "LiF", name: "lithium fluoride", e1: "Li", e2: "F", type: "Ionic",
+      propQ: ["High melting point (requires intense heat)", "Melts easily over a low flame"], corrProp: 0 },
+    { f: "K₂S", name: "potassium sulfide", e1: "K", e2: "S", type: "Ionic",
+      propQ: ["Conducts electricity in aqueous solution", "Non-electrolyte in water"], corrProp: 0 },
+    { f: "Al₂O₃", name: "aluminum oxide", e1: "Al", e2: "O", type: "Ionic",
+      propQ: ["Very high melting point (>2000°C)", "Vaporizes into gas at low temp"], corrProp: 0 },
+    { f: "MgF₂", name: "magnesium fluoride", e1: "Mg", e2: "F", type: "Ionic",
+      propQ: ["Brittle crystal lattice", "Liquid at room temperature"], corrProp: 0 },
+    { f: "BaCl₂", name: "barium chloride", e1: "Ba", e2: "Cl", type: "Ionic",
+      propQ: ["Releases mobile ions in water (conducts)", "Remains neutral molecules in water"], corrProp: 0 },
+    { f: "NaI", name: "sodium iodide", e1: "Na", e2: "I", type: "Ionic",
+      propQ: ["Crystalline solid at room temperature", "Gas at room temperature"], corrProp: 0 },
+    { f: "KBr", name: "potassium bromide", e1: "K", e2: "Br", type: "Ionic",
+      propQ: ["Strong electrostatic attraction between ions", "Weak attraction between separate molecules"], corrProp: 0 },
+    { f: "FeCl₂", name: "iron(II) chloride", e1: "Fe", e2: "Cl", type: "Ionic",
+      propQ: ["High melting point solid", "Low boiling point liquid"], corrProp: 0 },
+    { f: "Fe₂O₃", name: "iron(III) oxide (rust)", e1: "Fe", e2: "O", type: "Ionic",
+      propQ: ["Brittle, rigid solid lattice", "Soft, deformable gas"], corrProp: 0 },
+    { f: "CuCl₂", name: "copper(II) chloride", e1: "Cu", e2: "Cl", type: "Ionic",
+      propQ: ["Conducts electricity when dissolved", "Non-conductor in water"], corrProp: 0 },
+    { f: "SnO₂", name: "tin(IV) oxide", e1: "Sn", e2: "O", type: "Ionic",
+      propQ: ["High thermal stability (solid lattice)", "Boils readily at room temperature"], corrProp: 0 },
+    { f: "PbI₂", name: "lead(II) iodide", e1: "Pb", e2: "I", type: "Ionic",
+      propQ: ["Forms dense solid crystals", "Liquid that vaporizes rapidly"], corrProp: 0 },
+    { f: "CO₂", name: "carbon dioxide", e1: "C", e2: "O", type: "Covalent",
+      propQ: ["Low boiling point (gas at room temp)", "High melting point crystal solid"], corrProp: 0 },
+    { f: "CH₄", name: "methane", e1: "C", e2: "H", type: "Covalent",
+      propQ: ["Does not conduct electricity (non-electrolyte)", "Releases mobile ions in water"], corrProp: 0 },
+    { f: "CCl₄", name: "carbon tetrachloride", e1: "C", e2: "Cl", type: "Covalent",
+      propQ: ["Volatile liquid with low boiling point", "Rigid crystalline solid lattice"], corrProp: 0 },
+    { f: "NH₃", name: "ammonia", e1: "N", e2: "H", type: "Covalent",
+      propQ: ["Composed of distinct neutral molecules", "Composed of rigid ionic crystal lattice"], corrProp: 0 },
+    { f: "SO₂", name: "sulfur dioxide", e1: "S", e2: "O", type: "Covalent",
+      propQ: ["Gas at room temperature", "Hard, brittle solid crystal"], corrProp: 0 },
+    { f: "PCl₃", name: "phosphorus trichloride", e1: "P", e2: "Cl", type: "Covalent",
+      propQ: ["Low melting point liquid", "High melting point solid lattice"], corrProp: 0 },
+    { f: "CF₄", name: "carbon tetrafluoride", e1: "C", e2: "F", type: "Covalent",
+      propQ: ["Electrons are shared between non-metals", "Electrons are transferred from metal to non-metal"], corrProp: 0 },
+    { f: "N₂O", name: "dinitrogen monoxide", e1: "N", e2: "O", type: "Covalent",
+      propQ: ["Gas at room temperature", "Rigid crystalline solid"], corrProp: 0 },
+    { f: "CS₂", name: "carbon disulfide", e1: "C", e2: "S", type: "Covalent",
+      propQ: ["Non-electrolyte (does not conduct)", "Good conductor in solution"], corrProp: 0 }
+  ];
+
+  /* --- NL ELEMENT DATA --- */
+  const elements = [
+    { num: 1, sym: "H", name: "hydrogen", charges: ["1+", "1-"], state: "gas", r: 1, c: 1 },
+    { num: 2, sym: "He", name: "helium", charges: ["--"], state: "gas", r: 1, c: 18 },
+    { num: 3, sym: "Li", name: "lithium", charges: ["1+"], state: "solid", r: 2, c: 1 },
+    { num: 4, sym: "Be", name: "beryllium", charges: ["2+"], state: "solid", r: 2, c: 2 },
+    { num: 5, sym: "B", name: "boron", charges: [], state: "solid", r: 2, c: 13, stair: ["stair-b"] },
+    { num: 6, sym: "C", name: "carbon", charges: [], state: "solid", r: 2, c: 14 },
+    { num: 7, sym: "N", name: "nitrogen", charges: ["3-"], state: "gas", r: 2, c: 15 },
+    { num: 8, sym: "O", name: "oxygen", charges: ["2-"], state: "gas", r: 2, c: 16 },
+    { num: 9, sym: "F", name: "fluorine", charges: ["1-"], state: "gas", r: 2, c: 17 },
+    { num: 10, sym: "Ne", name: "neon", charges: ["--"], state: "gas", r: 2, c: 18 },
+    { num: 11, sym: "Na", name: "sodium", charges: ["1+"], state: "solid", r: 3, c: 1 },
+    { num: 12, sym: "Mg", name: "magnesium", charges: ["2+"], state: "solid", r: 3, c: 2 },
+    { num: 13, sym: "Al", name: "aluminum", charges: ["3+"], state: "solid", r: 3, c: 13, stair: ["stair-r"] },
+    { num: 14, sym: "Si", name: "silicon", charges: [], state: "solid", r: 3, c: 14, stair: ["stair-b"] },
+    { num: 15, sym: "P", name: "phosphorus", charges: ["3-"], state: "solid", r: 3, c: 15 },
+    { num: 16, sym: "S", name: "sulfur", charges: ["2-"], state: "solid", r: 3, c: 16 },
+    { num: 17, sym: "Cl", name: "chlorine", charges: ["1-"], state: "gas", r: 3, c: 17 },
+    { num: 18, sym: "Ar", name: "argon", charges: ["--"], state: "gas", r: 3, c: 18 },
+    { num: 19, sym: "K", name: "potassium", charges: ["1+"], state: "solid", r: 4, c: 1 },
+    { num: 20, sym: "Ca", name: "calcium", charges: ["2+"], state: "solid", r: 4, c: 2 },
+    { num: 21, sym: "Sc", name: "scandium", charges: ["3+"], state: "solid", r: 4, c: 3 },
+    { num: 22, sym: "Ti", name: "titanium", charges: ["4+", "3+"], state: "solid", r: 4, c: 4 },
+    { num: 23, sym: "V", name: "vanadium", charges: ["5+", "4+"], state: "solid", r: 4, c: 5 },
+    { num: 24, sym: "Cr", name: "chromium", charges: ["3+", "2+"], state: "solid", r: 4, c: 6 },
+    { num: 25, sym: "Mn", name: "manganese", charges: ["2+", "4+"], state: "solid", r: 4, c: 7 },
+    { num: 26, sym: "Fe", name: "iron", charges: ["3+", "2+"], state: "solid", r: 4, c: 8 },
+    { num: 27, sym: "Co", name: "cobalt", charges: ["2+", "3+"], state: "solid", r: 4, c: 9 },
+    { num: 28, sym: "Ni", name: "nickel", charges: ["2+", "3+"], state: "solid", r: 4, c: 10 },
+    { num: 29, sym: "Cu", name: "copper", charges: ["2+", "1+"], state: "solid", r: 4, c: 11 },
+    { num: 30, sym: "Zn", name: "zinc", charges: ["2+"], state: "solid", r: 4, c: 12 },
+    { num: 31, sym: "Ga", name: "gallium", charges: ["3+"], state: "solid", r: 4, c: 13, stair: ["stair-r"] },
+    { num: 32, sym: "Ge", name: "germanium", charges: ["4+"], state: "solid", r: 4, c: 14, stair: ["stair-r"] },
+    { num: 33, sym: "As", name: "arsenic", charges: ["3-"], state: "solid", r: 4, c: 15, stair: ["stair-b"] },
+    { num: 34, sym: "Se", name: "selenium", charges: ["2-"], state: "solid", r: 4, c: 16 },
+    { num: 35, sym: "Br", name: "bromine", charges: ["1-"], state: "liquid", r: 4, c: 17 },
+    { num: 36, sym: "Kr", name: "krypton", charges: ["--"], state: "gas", r: 4, c: 18 },
+    { num: 37, sym: "Rb", name: "rubidium", charges: ["1+"], state: "solid", r: 5, c: 1 },
+    { num: 38, sym: "Sr", name: "strontium", charges: ["2+"], state: "solid", r: 5, c: 2 },
+    { num: 39, sym: "Y", name: "yttrium", charges: ["3+"], state: "solid", r: 5, c: 3 },
+    { num: 40, sym: "Zr", name: "zirconium", charges: ["4+"], state: "solid", r: 5, c: 4 },
+    { num: 41, sym: "Nb", name: "niobium", charges: ["5+", "3+"], state: "solid", r: 5, c: 5 },
+    { num: 42, sym: "Mo", name: "molybdenum", charges: ["6+"], state: "solid", r: 5, c: 6 },
+    { num: 43, sym: "Tc", name: "technetium", charges: ["7+"], state: "solid", r: 5, c: 7 },
+    { num: 44, sym: "Ru", name: "ruthenium", charges: ["3+", "4+"], state: "solid", r: 5, c: 8 },
+    { num: 45, sym: "Rh", name: "rhodium", charges: ["3+"], state: "solid", r: 5, c: 9 },
+    { num: 46, sym: "Pd", name: "palladium", charges: ["2+", "4+"], state: "solid", r: 5, c: 10 },
+    { num: 47, sym: "Ag", name: "silver", charges: ["1+"], state: "solid", r: 5, c: 11 },
+    { num: 48, sym: "Cd", name: "cadmium", charges: ["2+"], state: "solid", r: 5, c: 12 },
+    { num: 49, sym: "In", name: "indium", charges: ["3+"], state: "solid", r: 5, c: 13 },
+    { num: 50, sym: "Sn", name: "tin", charges: ["4+", "2+"], state: "solid", r: 5, c: 14, stair: ["stair-r"] },
+    { num: 51, sym: "Sb", name: "antimony", charges: ["3+", "5+"], state: "solid", r: 5, c: 15, stair: ["stair-r"] },
+    { num: 52, sym: "Te", name: "tellurium", charges: ["2-"], state: "solid", r: 5, c: 16, stair: ["stair-b"] },
+    { num: 53, sym: "I", name: "iodine", charges: ["1-"], state: "solid", r: 5, c: 17 },
+    { num: 54, sym: "Xe", name: "xenon", charges: ["--"], state: "gas", r: 5, c: 18 },
+    { num: 55, sym: "Cs", name: "cesium", charges: ["1+"], state: "solid", r: 6, c: 1 },
+    { num: 56, sym: "Ba", name: "barium", charges: ["2+"], state: "solid", r: 6, c: 2 },
+    { num: 72, sym: "Hf", name: "hafnium", charges: ["4+"], state: "solid", r: 6, c: 4 },
+    { num: 73, sym: "Ta", name: "tantalum", charges: ["5+"], state: "solid", r: 6, c: 5 },
+    { num: 74, sym: "W", name: "tungsten", charges: ["6+"], state: "solid", r: 6, c: 6 },
+    { num: 75, sym: "Re", name: "rhenium", charges: ["7+"], state: "solid", r: 6, c: 7 },
+    { num: 76, sym: "Os", name: "osmium", charges: ["4+"], state: "solid", r: 6, c: 8 },
+    { num: 77, sym: "Ir", name: "iridium", charges: ["4+"], state: "solid", r: 6, c: 9 },
+    { num: 78, sym: "Pt", name: "platinum", charges: ["4+", "2+"], state: "solid", r: 6, c: 10 },
+    { num: 79, sym: "Au", name: "gold", charges: ["3+", "1+"], state: "solid", r: 6, c: 11 },
+    { num: 80, sym: "Hg", name: "mercury", charges: ["2+", "1+"], state: "liquid", r: 6, c: 12 },
+    { num: 81, sym: "Tl", name: "thallium", charges: ["1+", "3+"], state: "solid", r: 6, c: 13 },
+    { num: 82, sym: "Pb", name: "lead", charges: ["2+", "4+"], state: "solid", r: 6, c: 14 },
+    { num: 83, sym: "Bi", name: "bismuth", charges: ["3+", "5+"], state: "solid", r: 6, c: 15, stair: ["stair-r"] },
+    { num: 84, sym: "Po", name: "polonium", charges: ["2+", "4+"], state: "solid", r: 6, c: 16, stair: ["stair-r"] },
+    { num: 85, sym: "At", name: "astatine", charges: ["1-"], state: "solid", r: 6, c: 17, stair: ["stair-b"] },
+    { num: 86, sym: "Rn", name: "radon", charges: ["--"], state: "gas", r: 6, c: 18 },
+    { num: 87, sym: "Fr", name: "francium", charges: ["1+"], state: "solid", r: 7, c: 1 },
+    { num: 88, sym: "Ra", name: "radium", charges: ["2+"], state: "solid", r: 7, c: 2 }
+  ];
+
+  /* --- BUILD TABLES --- */
+  function buildCells(container) {
+    elements.forEach(el => {
+      const div = document.createElement("div");
+      div.className = `cell ${el.state} ${el.stair ? el.stair.join(" ") : ""}`;
+      div.style.gridRow = el.r;
+      div.style.gridColumn = el.c;
+      div.dataset.sym = el.sym;
+      div.dataset.num = el.num;
+
+      const chargesHtml = el.charges.map(ch => `<span>${ch}</span>`).join("");
+      div.innerHTML = `
+        <div class="cell-top">
+          <span>${el.num}</span>
+          <div class="cell-charges">${chargesHtml}</div>
+        </div>
+        <div class="cell-symbol">${el.sym}</div>
+        <div class="cell-name">${el.name}</div>
+      `;
+      container.appendChild(div);
+    });
+
+    const gap = document.createElement("div");
+    gap.style.gridRow = "6";
+    gap.style.gridColumn = "3";
+    gap.style.display = "flex";
+    gap.style.alignItems = "center";
+    gap.style.justifyContent = "center";
+    gap.style.fontSize = "5px";
+    gap.style.textAlign = "center";
+    gap.style.color = "#888";
+    gap.innerHTML = "57-71<br/>lanth.";
+    container.appendChild(gap);
+  }
+
+  const mainGrid = document.getElementById("grid");
+  const cloneGrid = document.getElementById("grid-clone");
+  buildCells(mainGrid);
+  buildCells(cloneGrid);
+
+  /* --- LOUPE TRACKER --- */
+  const viewport = document.getElementById("viewport");
+  const loupe = document.getElementById("loupe");
+  const zoom = 2.5;
+  const loupeRadius = 105;
+  let currentHoveredNum = null;
+
+  viewport.addEventListener("mousemove", (e) => {
+    const vRect = viewport.getBoundingClientRect();
+    const gRect = mainGrid.getBoundingClientRect();
+
+    const vx = e.clientX - vRect.left;
+    const vy = e.clientY - vRect.top;
+
+    if (vx < -10 || vx > vRect.width + 10 || vy < -10 || vy > vRect.height + 10) {
+      loupe.style.display = "none";
+      clearHover();
+      return;
+    }
+
+    loupe.style.display = "block";
+    loupe.style.left = `${vx}px`;
+    loupe.style.top = `${vy}px`;
+
+    const gx = e.clientX - gRect.left;
+    const gy = e.clientY - gRect.top;
+
+    const transX = loupeRadius - (gx * zoom);
+    const transY = loupeRadius - (gy * zoom);
+    cloneGrid.style.transform = `translate(${transX}px, ${transY}px) scale(${zoom})`;
+
+    const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".cell");
+    if (target && target.dataset.num) {
+      const num = target.dataset.num;
+      if (num !== currentHoveredNum) {
+        clearHover();
+        currentHoveredNum = num;
+        mainGrid.querySelector(`[data-num="${num}"]`)?.classList.add("hovered");
+        cloneGrid.querySelector(`[data-num="${num}"]`)?.classList.add("hovered");
+      }
+    } else {
+      clearHover();
+    }
+  });
+
+  viewport.addEventListener("mouseleave", () => {
+    loupe.style.display = "none";
+    clearHover();
+  });
+
+  function clearHover() {
+    if (currentHoveredNum) {
+      mainGrid.querySelector(`[data-num="${currentHoveredNum}"]`)?.classList.remove("hovered");
+      cloneGrid.querySelector(`[data-num="${currentHoveredNum}"]`)?.classList.remove("hovered");
+      currentHoveredNum = null;
+    }
+  }
+
+  /* --- BULLETPROOF ACTIVITY ENGINE --- */
+  let activeQuestions = [];
+  let currentIndex = 0;
+  let totalScore = 0;
+  let foundE1 = false;
+  let foundE2 = false;
+  let currentMistakes = 0;
+
+  function shuffle(array) {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function startFreshSet() {
+    activeQuestions = shuffle(compoundBank).slice(0, 5);
+    currentIndex = 0;
+    totalScore = 0;
+
+    document.getElementById("hud").style.display = "flex";
+    document.getElementById("final-screen").style.display = "none";
+    document.getElementById("viewport").style.display = "block";
+
+    loadCurrentQuestion();
+  }
+
+  function loadCurrentQuestion() {
+    const q = activeQuestions[currentIndex];
+    foundE1 = false;
+    foundE2 = false;
+    currentMistakes = 0;
+
+    // 1. Unpin any selected elements on both main and clone grids
+    document.querySelectorAll(".cell.pinned").forEach(c => c.classList.remove("pinned"));
+
+    // 2. Update Formula, Name, and Progress
+    document.getElementById("display-formula").innerHTML = q.f.replace(/(\d+)/g, "<sub>$1</sub>");
+    document.getElementById("display-name").textContent = q.name;
+    document.getElementById("hud-progress").textContent = 
+      `Compound ${currentIndex + 1} of 5 | Credit: ${totalScore}%`;
+
+    // 3. Reset Element Checklist Pills cleanly (no inner spans to avoid null errors)
+    const pill1 = document.getElementById("pill-e1");
+    const pill2 = document.getElementById("pill-e2");
+    pill1.className = "check-pill";
+    pill1.textContent = `Find: ${q.e1}`;
+    pill2.className = "check-pill";
+    pill2.textContent = `Find: ${q.e2}`;
+
+    // 4. Reset Rows Visibility
+    document.getElementById("row-find").style.display = "grid";
+    document.getElementById("row-classify").style.display = "none";
+    document.getElementById("row-property").style.display = "none";
+
+    // 5. Reset all buttons and clear selected classes
+    document.querySelectorAll("#row-classify button.btn, #row-property button.btn").forEach(b => {
+      b.disabled = false;
+      b.classList.remove("selected");
+    });
+
+    // 6. Clear all feedback text and hide Next button
+    document.getElementById("fb-classify").textContent = "";
+    document.getElementById("fb-classify").className = "feedback-text";
+    document.getElementById("fb-prop").textContent = "";
+    document.getElementById("fb-prop").className = "feedback-text";
+    document.getElementById("btn-next").style.display = "none";
+
+    // 7. Randomize Property Options (Option A vs B)
+    const options = [q.propQ[0], q.propQ[1]];
+    const correctIdx = q.corrProp;
+    const shuffledIdxs = Math.random() < 0.5 ? [0, 1] : [1, 0];
+
+    const btnA = document.getElementById("prop-opt-a");
+    const btnB = document.getElementById("prop-opt-b");
+    btnA.textContent = options[shuffledIdxs[0]];
+    btnB.textContent = options[shuffledIdxs[1]];
+    btnA.dataset.correct = (shuffledIdxs[0] === correctIdx);
+    btnB.dataset.correct = (shuffledIdxs[1] === correctIdx);
+  }
+
+  /* Periodic Table Click Handler */
+  viewport.addEventListener("click", (e) => {
+    const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".cell");
+    if (!target) return;
+    const sym = target.dataset.sym;
+    const q = activeQuestions[currentIndex];
+
+    if (sym === q.e1 && !foundE1) {
+      foundE1 = true;
+      const pill1 = document.getElementById("pill-e1");
+      pill1.className = "check-pill found";
+      pill1.textContent = `✓ ${q.e1}`;
+      pinElement(sym);
+    } else if (sym === q.e2 && !foundE2) {
+      foundE2 = true;
+      const pill2 = document.getElementById("pill-e2");
+      pill2.className = "check-pill found";
+      pill2.textContent = `✓ ${q.e2}`;
+      pinElement(sym);
+    }
+
+    if (foundE1 && foundE2) {
+      document.getElementById("row-classify").style.display = "grid";
+    }
+  });
+
+  function pinElement(sym) {
+    mainGrid.querySelector(`[data-sym="${sym}"]`)?.classList.add("pinned");
+    cloneGrid.querySelector(`[data-sym="${sym}"]`)?.classList.add("pinned");
+  }
+
+  function handleClassify(selectedType) {
+    const q = activeQuestions[currentIndex];
+    const fb = document.getElementById("fb-classify");
+
+    if (selectedType === q.type) {
+      fb.className = "feedback-text good";
+      fb.textContent = `Correct! (${q.type})`;
+      
+      // Disable classify buttons, mark selected
+      document.getElementById("btn-ionic").disabled = true;
+      document.getElementById("btn-covalent").disabled = true;
+      document.getElementById(selectedType === "Ionic" ? "btn-ionic" : "btn-covalent").classList.add("selected");
+      
+      document.getElementById("row-property").style.display = "grid";
+    } else {
+      currentMistakes++;
+      fb.className = "feedback-text bad";
+      fb.textContent = `Look closely at the ion charges: ${q.type === "Ionic" ? "Metal (+) and Non-metal (-)" : "Both are non-metals (sharing electrons)"}.`;
+    }
+  }
+
+  function handleProperty(btnNum) {
+    const btn = btnNum === 0 ? document.getElementById("prop-opt-a") : document.getElementById("prop-opt-b");
+    const isCorrect = btn.dataset.correct === "true";
+    const fb = document.getElementById("fb-prop");
+
+    if (isCorrect) {
+      fb.className = "feedback-text good";
+      fb.textContent = "Exact match!";
+      btn.classList.add("selected");
+
+      // Disable property buttons only
+      document.getElementById("prop-opt-a").disabled = true;
+      document.getElementById("prop-opt-b").disabled = true;
+
+      // Unlock Next Compound button
+      document.getElementById("btn-next").style.display = "inline-block";
+
+      if (currentMistakes === 0) {
+        totalScore += 20;
+      } else {
+        totalScore += 10;
+      }
+      document.getElementById("hud-progress").textContent = 
+        `Compound ${currentIndex + 1} of 5 | Credit: ${totalScore}%`;
+    } else {
+      currentMistakes++;
+      fb.className = "feedback-text bad";
+      fb.textContent = "Not quite. Think about the structure (rigid crystal lattice vs separate molecules).";
+    }
+  }
+
+  function nextCompound() {
+    currentIndex++;
+    if (currentIndex < 5) {
+      loadCurrentQuestion();
+    } else {
+      finishRound();
+    }
+  }
+
+  function finishRound() {
+    document.getElementById("hud").style.display = "none";
+    document.getElementById("viewport").style.display = "none";
+    const fs = document.getElementById("final-screen");
+    fs.style.display = "block";
+
+    document.getElementById("final-score-text").innerHTML = 
+      `Your Score: <strong>${totalScore}%</strong> (${totalScore / 20} of 5 mastered)`;
+
+    sendScoreSCORM(totalScore);
+  }
+
+  window.onload = function() {
+    initSCORM();
+    startFreshSet();
+  };
+</script>
+
+</body>
+</html>
